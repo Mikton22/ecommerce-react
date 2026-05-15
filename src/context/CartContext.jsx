@@ -58,6 +58,10 @@ export default function CartProvider({ children }) {
     setCartItems([]);
   }
 
+    function getCartItemsCount() {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
+  }
+
   return (
     <CartContext.Provider
       value={{
@@ -68,6 +72,7 @@ export default function CartProvider({ children }) {
         updateQuantity,
         getCartTotal,
         clearCart,
+        getCartItemsCount,
       }}
     >
       {children}
