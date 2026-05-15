@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 
 export default function Navbar() {
   const { getCartItemsCount } = useCart();
+  const count = getCartItemsCount();
 
   const { user, logout } = useAuth();
 
@@ -18,7 +19,7 @@ export default function Navbar() {
             Home
           </Link>
           <Link to="/checkout" className="navbar-link">
-            Cart {getCartItemsCount() > 0 ? `(${getCartItemsCount()})` : ""}
+            Cart {count > 0 ? `(${count})` : ""}
           </Link>
         </div>
         <div className="navbar-auth">
