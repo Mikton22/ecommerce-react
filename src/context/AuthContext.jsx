@@ -1,15 +1,22 @@
-import { createContext, useState, useContext } from "react";
+import {
+  createContext,
+  useState,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
 
 const AuthContext = createContext(null);
 
-export default function AuthProvider({ children }) {
-  const [user, setUser] = useState(
-    localStorage.getItem("currentUserEmail")
-      ? { email: localStorage.getItem("currentUserEmail") }
-      : null,
-  );
+function getInitialUser() {
+  const email = localStorage.getItem("currentUserEmail");
+  return email ? { email } : null;
+}
 
-  function signUp(email, password) {
+export default function AuthProvider({ children }) {
+  const [user, setUser] = useState(getInitialUser);
+
+  const signUp = useCallback((email, password) => {
     const users = JSON.parse(localStorage.getItem("users") || "[]");
 
     if (users.find((u) => u.email === email)) {
@@ -25,15 +32,16 @@ export default function AuthProvider({ children }) {
     setUser({ email });
 
     return { success: true };
-  }
+  }, []);
 
-  function login(email, password) {
+  const login = useCallback((email, password) => {
     const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const user = users.find(
+
+    const found = users.find(
       (u) => u.email === email && u.password === password,
     );
 
-    if (!user) {
+    if (!found) {
       return { success: false, error: "Invalid email or password" };
     }
 
@@ -41,22 +49,26 @@ export default function AuthProvider({ children }) {
     setUser({ email });
 
     return { success: true };
-  }
+  }, []);
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem("currentUserEmail");
     setUser(null);
-  }
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{ signUp, user, logout, login }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      signUp,
+      login,
+      logout,
+    }),
+    [user, signUp, login, logout],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-
-  return context;
+  return useContext(AuthContext);
 }

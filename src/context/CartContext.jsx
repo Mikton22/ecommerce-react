@@ -1,80 +1,92 @@
-import { createContext, useState, useContext } from "react";
+import { createContext, useState, useContext, useCallback, useMemo } from "react";
 import { getProductById } from "../data/products";
 
 const CartContext = createContext(null);
 
 export default function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState([]); // {id: 2, quantity: 7}
+  const [cartItems, setCartItems] = useState([]);
 
-  function addToCart(productId) {
-    const existing = cartItems.find((item) => item.id === productId);
-    if (existing) {
-      const currentQuantity = existing.quantity;
-      const updatedCartItems = cartItems.map((item) =>
-        item.id === productId
-          ? { id: productId, quantity: currentQuantity + 1 }
-          : item,
+  const addToCart = useCallback((productId) => {
+    setCartItems((prev) => {
+      const existing = prev.find((item) => item.id === productId);
+
+      if (existing) {
+        return prev.map((item) =>
+          item.id === productId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+
+      return [...prev, { id: productId, quantity: 1 }];
+    });
+  }, []);
+
+  const removeFromCart = useCallback((productId) => {
+    setCartItems((prev) => prev.filter((item) => item.id !== productId));
+  }, []);
+
+  const updateQuantity = useCallback((productId, quantity) => {
+    setCartItems((prev) => {
+      if (quantity <= 0) {
+        return prev.filter((item) => item.id !== productId);
+      }
+
+      return prev.map((item) =>
+        item.id === productId ? { ...item, quantity } : item
       );
-      setCartItems(updatedCartItems);
-    } else {
-      setCartItems([...cartItems, { id: productId, quantity: 1 }]);
-    }
-  }
+    });
+  }, []);
 
-  function getCartItemsWithProducts() {
+  const clearCart = useCallback(() => {
+    setCartItems([]);
+  }, []);
+
+  const getCartItemsWithProducts = useCallback(() => {
     return cartItems
       .map((item) => ({
         ...item,
         product: getProductById(item.id),
       }))
       .filter((item) => item.product);
-  }
+  }, [cartItems]);
 
-  function removeFromCart(productId) {
-    setCartItems(cartItems.filter((item) => item.id !== productId));
-  }
-
-  function updateQuantity(productId, quantity) {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCartItems(
-      cartItems.map((item) =>
-        item.id === productId ? { ...item, quantity } : item,
-      ),
-    );
-  }
-
-  function getCartTotal() {
-    const total = cartItems.reduce((total, item) => {
+  const getCartTotal = useCallback(() => {
+    return cartItems.reduce((total, item) => {
       const product = getProductById(item.id);
       return total + (product ? product.price * item.quantity : 0);
     }, 0);
-    return total;
-  }
+  }, [cartItems]);
 
-  function clearCart() {
-    setCartItems([]);
-  }
-
-    function getCartItemsCount() {
+  const getCartItemsCount = useCallback(() => {
     return cartItems.reduce((total, item) => total + item.quantity, 0);
-  }
+  }, [cartItems]);
+
+  const value = useMemo(
+    () => ({
+      cartItems,
+      addToCart,
+      removeFromCart,
+      updateQuantity,
+      clearCart,
+      getCartItemsWithProducts,
+      getCartTotal,
+      getCartItemsCount,
+    }),
+    [
+      cartItems,
+      addToCart,
+      removeFromCart,
+      updateQuantity,
+      clearCart,
+      getCartItemsWithProducts,
+      getCartTotal,
+      getCartItemsCount,
+    ]
+  );
 
   return (
-    <CartContext.Provider
-      value={{
-        cartItems,
-        addToCart,
-        getCartItemsWithProducts,
-        removeFromCart,
-        updateQuantity,
-        getCartTotal,
-        clearCart,
-        getCartItemsCount,
-      }}
-    >
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
@@ -82,6 +94,5 @@ export default function CartProvider({ children }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-
   return context;
 }
